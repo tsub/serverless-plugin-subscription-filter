@@ -2,8 +2,12 @@
   "name": "serverless-plugin-subscription-filter",
   "version": "1.0.0",
   "description": "serverless-plugin-subscription-filter",
-  "main": "index.js",
+  "main": "src/index.js",
   "repository": "ssh://git@github.com/tsub/serverless-plugin-subscription-filter",
   "author": "tsub <t-takayama@feedforce.jp>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.7.7",
+    "lodash": "^4.17.2"
+  }
 }
