@@ -1,0 +1,1 @@
+# serverless-plugin-subscription-filter
