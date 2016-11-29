@@ -201,7 +201,7 @@ class ServerlessPluginSubscriptionFilter {
 
       cloudWatchLogs.describeSubscriptionFilters(params).promise()
         .then((data) => {
-          if (data.subscriptionFilters) {
+          if (data.subscriptionFilters.length > 0) {
             resolve(true);
           }
 
