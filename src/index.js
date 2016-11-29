@@ -181,6 +181,11 @@ class ServerlessPluginSubscriptionFilter {
           resolve(false);
         })
         .catch((err) => {
+          // aws-sdk throws ResourceNotFoundException when no policy.
+          if (err.name === 'ResourceNotFoundException') {
+            resolve(false);
+          }
+
           reject(err);
         });
     });
