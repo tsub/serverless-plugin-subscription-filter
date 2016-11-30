@@ -24,10 +24,12 @@ class ServerlessPluginSubscriptionFilter {
   loopEvents(fn) {
     const serviceName = this.serverless.service.service;
     const stage = this.options.stage || this.serverless.service.provider.stage;
-    const functions = this.serverless.service.functions;
+    const functions = this.serverless.service.getAllFunctions();
 
-    _.each(functions, (fnDef, fnName) => {
-      _.each(fnDef.events, (event) => {
+    functions.forEach((functionName) => {
+      const functionObj = this.serverless.service.getFunction(functionName);
+
+      functionObj.events.forEach((event) => {
         if (event.subscriptionFilter) {
           if (event.subscriptionFilter.stage != stage) {
             // Skip register or remove
@@ -38,7 +40,7 @@ class ServerlessPluginSubscriptionFilter {
           const functionName = `${serviceName}-${stage}-${fnName}`;
           fn.call(this, event.subscriptionFilter, functionName);
         }
-      })
+      });
     });
   }
 
