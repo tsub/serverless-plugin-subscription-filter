@@ -14,12 +14,13 @@ class ServerlessPluginSubscriptionFilter {
     });
 
     this.hooks = {
-      'after:deploy:function:deploy': this.loopEvents.bind(this),
-      'after:deploy:deploy': this.loopEvents.bind(this),
+      'after:deploy:function:deploy': this.loopEvents.bind(this, this.register),
+      'after:deploy:deploy': this.loopEvents.bind(this, this.register),
+      'after:remove:remove': this.loopEvents.bind(this, this.remove),
     };
   }
 
-  loopEvents() {
+  loopEvents(fn) {
     const serviceName = this.serverless.service.service;
     const stage = this.serverless.service.provider.stage;
     const functions = this.serverless.service.functions;
@@ -28,17 +29,30 @@ class ServerlessPluginSubscriptionFilter {
       _.each(fnDef.events, (event) => {
         if (event.subscriptionFilter) {
           const functionName = `${serviceName}-${stage}-${fnName}`;
-          this.register(event.subscriptionFilter, functionName);
+          fn.call(this, event.subscriptionFilter, functionName);
         }
       })
     });
   }
 
   register(setting, functionName) {
+    this.serverless.cli.log(`Registering ${functionName} to ${setting.logGroupName} subscription filter...`);
+
     this.addPermission(functionName)
       .then((_data) => {
         return this.putSubscriptionFilter(setting, functionName);
       })
+      .then((data) => {
+      })
+      .catch((err) => {
+        console.log(err, err.stack);
+      });
+  }
+
+  remove(setting, functionName) {
+    this.serverless.cli.log(`Removing ${functionName} from ${setting.logGroupName} subscription filter...`);
+
+    this.deleteSubscriptionFilter(setting, functionName)
       .then((data) => {
       })
       .catch((err) => {
@@ -67,6 +81,32 @@ class ServerlessPluginSubscriptionFilter {
           };
 
           return cloudWatchLogs.putSubscriptionFilter(params).promise();
+        })
+        .then((data) => {
+          resolve(data);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+  }
+
+  deleteSubscriptionFilter(setting, functionName) {
+    return new Promise((resolve, reject) => {
+      this.checkAlreadyRegister(setting.logGroupName, setting.filterName)
+        .then((isAlreadyRegister) => {
+          if (!isAlreadyRegister) {
+            // Skip deleteSubscriptionFilter
+            resolve();
+          }
+
+          const cloudWatchLogs = new AWS.CloudWatchLogs();
+          const params = {
+            filterName: setting.filterName,
+            logGroupName: setting.logGroupName
+          };
+
+          return cloudWatchLogs.deleteSubscriptionFilter(params).promise();
         })
         .then((data) => {
           resolve(data);
