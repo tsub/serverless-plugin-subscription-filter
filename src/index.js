@@ -2,6 +2,7 @@
 
 const _ = require('lodash');
 const AWS = require('aws-sdk');
+const STATEMENT_ID = 'serverless-plugin-subscription-filter';
 
 class ServerlessPluginSubscriptionFilter {
   constructor(serverless, options) {
@@ -147,8 +148,8 @@ class ServerlessPluginSubscriptionFilter {
           const params = {
             Action: 'lambda:InvokeFunction',
             FunctionName: functionName,
-            Principal: 'logs.ap-northeast-1.amazonaws.com', // TODO: regionを動的に取得する
-            StatementId: 'subscriptionFilter' // TODO: sidの決め打ちやめる
+            Principal: `logs.${this.serverless.service.provider.region}.amazonaws.com`,
+            StatementId: STATEMENT_ID
           };
 
           lambda.addPermission(params).promise()
@@ -174,7 +175,7 @@ class ServerlessPluginSubscriptionFilter {
           const policy = JSON.parse(data.Policy);
           const sid = policy.Statement[0].Sid;
 
-          if (sid == 'subscriptionFilter') { // TODO: sidの決め打ちやめる
+          if (sid == STATEMENT_ID) {
             resolve(true);
           }
 
