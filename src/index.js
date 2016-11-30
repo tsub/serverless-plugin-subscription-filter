@@ -2,224 +2,153 @@
 
 const _ = require('lodash');
 const AWS = require('aws-sdk');
-const STATEMENT_ID = 'serverless-plugin-subscription-filter';
 
 class ServerlessPluginSubscriptionFilter {
   constructor(serverless, options) {
     this.serverless = serverless;
     this.options = options;
 
-    this.provider = 'aws';
+    this.provider = this.serverless.getProvider('aws');
     AWS.config.update({
       region: this.serverless.service.provider.region
     });
 
     this.hooks = {
-      'after:deploy:function:deploy': this.loopEvents.bind(this, this.register),
-      'after:deploy:deploy': this.loopEvents.bind(this, this.register),
-      'after:remove:remove': this.loopEvents.bind(this, this.remove),
+      'deploy:compileEvents': this.compileSubscriptionFilterEvents.bind(this),
     };
   }
 
-  loopEvents(fn) {
-    const serviceName = this.serverless.service.service;
-    const stage = this.options.stage || this.serverless.service.provider.stage;
+  compileSubscriptionFilterEvents() {
+    const stage = this.provider.getStage();
     const functions = this.serverless.service.getAllFunctions();
 
     functions.forEach((functionName) => {
       const functionObj = this.serverless.service.getFunction(functionName);
 
       functionObj.events.forEach((event) => {
-        if (event.subscriptionFilter) {
-          if (event.subscriptionFilter.stage != stage) {
-            // Skip register or remove
-            this.serverless.cli.log(`Skipping ${fn.name} subscription filter...`)
+        const subscriptionFilter = event.subscriptionFilter;
+
+        if (subscriptionFilter) {
+          if (subscriptionFilter.stage != stage) {
+            // Skip compileSubscriptionFilterEvents
+            this.serverless.cli.log(`Skipping to compile ${subscriptionFilter.logGroupName} subscription filter object...`);
             return;
           }
 
-          const functionName = `${serviceName}-${stage}-${fnName}`;
-          fn.call(this, event.subscriptionFilter, functionName);
+          this.doCompile(subscriptionFilter, functionName);
         }
       });
     });
   }
 
-  register(setting, functionName) {
-    this.serverless.cli.log(`Registering ${functionName} to ${setting.logGroupName} subscription filter...`);
+  doCompile(setting, functionName) {
+    this.serverless.cli.log(`Compiling ${setting.logGroupName} subscription filter object...`);
 
-    this.addPermission(functionName)
-      .then((_data) => {
-        return this.putSubscriptionFilter(setting, functionName);
+    this.getLogGroupArn(setting.logGroupName)
+      .then((logGroupArn) => {
+        return this.compilePermission(setting, functionName, logGroupArn);
       })
-      .then((data) => {
+      .then((newPermissionObject) => {
+        _.merge(
+          this.serverless.service.provider.compiledCloudFormationTemplate.Resources,
+          newPermissionObject
+        );
+
+        return this.compileSubscriptionFilter(setting, functionName);
+      })
+      .then((newSubscriptionFilterObject) => {
+        _.merge(
+          this.serverless.service.provider.compiledCloudFormationTemplate.Resources,
+          newSubscriptionFilterObject
+        );
       })
       .catch((err) => {
         console.log(err, err.stack);
       });
   }
 
-  remove(setting, functionName) {
-    this.serverless.cli.log(`Removing ${functionName} from ${setting.logGroupName} subscription filter...`);
-
-    this.deleteSubscriptionFilter(setting, functionName)
-      .then((data) => {
-      })
-      .catch((err) => {
-        console.log(err, err.stack);
-      });
-  }
-
-  putSubscriptionFilter(setting, functionName) {
-    return new Promise((resolve, reject) => {
-      this.checkAlreadyRegister(setting.logGroupName, setting.filterName)
-        .then((isAlreadyRegister) => {
-          if (isAlreadyRegister) {
-            // Skip putSubscriptionFilter
-            resolve();
-          }
-
-          return this.getFunctionArn(functionName);
-        })
-        .then((functionArn) => {
-          const cloudWatchLogs = new AWS.CloudWatchLogs();
-          const params = {
-            destinationArn: functionArn,
-            filterName: setting.filterName,
-            filterPattern: setting.filterPattern,
-            logGroupName: setting.logGroupName
-          };
-
-          return cloudWatchLogs.putSubscriptionFilter(params).promise();
-        })
-        .then((data) => {
-          resolve(data);
-        })
-        .catch((err) => {
-          reject(err);
-        });
-    });
-  }
-
-  deleteSubscriptionFilter(setting, functionName) {
-    return new Promise((resolve, reject) => {
-      this.checkAlreadyRegister(setting.logGroupName, setting.filterName)
-        .then((isAlreadyRegister) => {
-          if (!isAlreadyRegister) {
-            // Skip deleteSubscriptionFilter
-            resolve();
-          }
-
-          const cloudWatchLogs = new AWS.CloudWatchLogs();
-          const params = {
-            filterName: setting.filterName,
-            logGroupName: setting.logGroupName
-          };
-
-          return cloudWatchLogs.deleteSubscriptionFilter(params).promise();
-        })
-        .then((data) => {
-          resolve(data);
-        })
-        .catch((err) => {
-          reject(err);
-        });
-    });
-  }
-
-  getFunctionArn(functionName) {
-    return new Promise((resolve, reject) => {
-      const lambda = new AWS.Lambda();
-      const params = {
-        FunctionName: functionName
+  compileSubscriptionFilter(setting, functionName) {
+    return new Promise((resolve, _reject) => {
+      const lambdaLogicalId = this.provider.naming.getLambdaLogicalId(functionName);
+      const lambdaPermissionLogicalId = this.getLambdaPermissionLogicalId(functionName, setting.logGroupName);
+      const filterPattern = setting.filterPattern;
+      const logGroupName = setting.logGroupName;
+      const subscriptionFilterTemplate = `
+        {
+          "Type" : "AWS::Logs::SubscriptionFilter",
+          "Properties" : {
+            "DestinationArn" : { "Fn::GetAtt": ["${lambdaLogicalId}", "Arn"] },
+            "FilterPattern" : "${filterPattern}",
+            "LogGroupName" : "${logGroupName}"
+          },
+          "DependsOn": "${lambdaPermissionLogicalId}"
+        }
+      `;
+      const subscriptionFilterLogicalId = this.getSubscriptionFilterLogicalId(functionName, setting.logGroupName);
+      const newSubscriptionFilterObject = {
+        [subscriptionFilterLogicalId]: JSON.parse(subscriptionFilterTemplate)
       };
 
-      lambda.getFunction(params).promise()
-        .then((data) => {
-          resolve(data.Configuration.FunctionArn);
-        })
-        .then((err) => {
-          reject(err);
-        });
+      resolve(newSubscriptionFilterObject);
     });
   }
 
-  addPermission(functionName) {
+  compilePermission(setting, functionName, logGroupArn) {
     return new Promise((resolve, reject) => {
-      this.checkAlreadyPermit(functionName)
-        .then((isAlreadyPermit) => {
-          if (isAlreadyPermit) {
-            // Skip addPermission
-            resolve();
+      const lambdaLogicalId = this.provider.naming.getLambdaLogicalId(functionName);
+      const region = this.provider.getRegion();
+      const permissionTemplate = `
+        {
+          "Type": "AWS::Lambda::Permission",
+          "Properties": {
+            "FunctionName": { "Fn::GetAtt": ["${lambdaLogicalId}", "Arn"] },
+            "Action": "lambda:InvokeFunction",
+            "Principal": "logs.${region}.amazonaws.com",
+            "SourceArn": "${logGroupArn}"
           }
-
-          const lambda = new AWS.Lambda();
-          const params = {
-            Action: 'lambda:InvokeFunction',
-            FunctionName: functionName,
-            Principal: `logs.${this.serverless.service.provider.region}.amazonaws.com`,
-            StatementId: STATEMENT_ID
-          };
-
-          lambda.addPermission(params).promise()
-            .then((data) => {
-              resolve(data);
-            })
-            .catch((err) => {
-              reject(err);
-            });
-      });
-    });
-  }
-
-  checkAlreadyPermit(functionName) {
-    return new Promise((resolve, reject) => {
-      const lambda = new AWS.Lambda();
-      const params = {
-        FunctionName: functionName
+        }
+      `;
+      const lambdaPermissionLogicalId = this.getLambdaPermissionLogicalId(functionName, setting.logGroupName);
+      const newPermissionObject = {
+        [lambdaPermissionLogicalId]: JSON.parse(permissionTemplate)
       };
 
-      lambda.getPolicy(params).promise()
-        .then((data) => {
-          const policy = JSON.parse(data.Policy);
-          const sid = policy.Statement[0].Sid;
-
-          if (sid == STATEMENT_ID) {
-            resolve(true);
-          }
-
-          resolve(false);
-        })
-        .catch((err) => {
-          // aws-sdk throws ResourceNotFoundException when no policy.
-          if (err.name === 'ResourceNotFoundException') {
-            resolve(false);
-          }
-
-          reject(err);
-        });
+      resolve(newPermissionObject);
     });
   }
 
-  checkAlreadyRegister(logGroupName, filterName) {
+  getLogGroupArn(logGroupName) {
     return new Promise((resolve, reject) => {
       const cloudWatchLogs = new AWS.CloudWatchLogs();
       const params = {
-        logGroupName,
-        filterNamePrefix: filterName
+        logGroupNamePrefix: logGroupName
       };
 
-      cloudWatchLogs.describeSubscriptionFilters(params).promise()
+      cloudWatchLogs.describeLogGroups(params).promise()
         .then((data) => {
-          if (data.subscriptionFilters.length > 0) {
-            resolve(true);
-          }
+          const logGroups = data.logGroups;
+          const logGroup = _.find(logGroups, { logGroupName: logGroupName });
 
-          resolve(false);
+          resolve(logGroup.arn);
         })
         .catch((err) => {
           reject(err);
         });
     });
+  }
+
+  getSubscriptionFilterLogicalId(functionName, logGroupName) {
+    const normalizedFunctionName = this.provider.naming.getNormalizedFunctionName(functionName);
+    const normalizedLogGroupName = this.provider.naming.normalizeNameToAlphaNumericOnly(logGroupName);
+
+    return `${normalizedFunctionName}SubscriptionFilter${normalizedLogGroupName}`;
+  }
+
+  getLambdaPermissionLogicalId(functionName, logGroupName) {
+    const normalizedFunctionName = this.provider.naming.getNormalizedFunctionName(functionName);
+    const normalizedLogGroupName = this.provider.naming.normalizeNameToAlphaNumericOnly(logGroupName);
+
+    return `${normalizedFunctionName}LambdaPermission${normalizedLogGroupName}`;
   }
 }
 
