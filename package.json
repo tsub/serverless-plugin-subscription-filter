@@ -4,8 +4,18 @@
   "description": "serverless-plugin-subscription-filter",
   "main": "src/index.js",
   "repository": "ssh://git@github.com/tsub/serverless-plugin-subscription-filter",
-  "author": "tsub <t-takayama@feedforce.jp>",
+  "author": "tsub <tsubasatakayama511@gmail.com>",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tsub/serverless-plugin-subscription-filter/issues"
+  },
+  "homepage": "https://github.com/tsub/serverless-plugin-subscription-filter#readme",
+  "keywords": [
+    "serverless",
+    "plugin",
+    "subscription-filter",
+    "cloudwatchlogs"
+  ],
   "dependencies": {
     "aws-sdk": "^2.7.7",
     "lodash": "^4.17.2"
