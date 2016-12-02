@@ -21,6 +21,7 @@ class ServerlessPluginSubscriptionFilter {
   compileSubscriptionFilterEvents() {
     const stage = this.provider.getStage();
     const functions = this.serverless.service.getAllFunctions();
+    const promises = [];
 
     functions.forEach((functionName) => {
       const functionObj = this.serverless.service.getFunction(functionName);
@@ -35,16 +36,18 @@ class ServerlessPluginSubscriptionFilter {
             return;
           }
 
-          this.doCompile(subscriptionFilter, functionName);
+          promises.push(this.doCompile(subscriptionFilter, functionName));
         }
       });
     });
+
+    return Promise.all(promises);
   }
 
   doCompile(setting, functionName) {
     this.serverless.cli.log(`Compiling ${setting.logGroupName} subscription filter object...`);
 
-    this.getLogGroupArn(setting.logGroupName)
+    return this.getLogGroupArn(setting.logGroupName)
       .then((logGroupArn) => {
         return this.compilePermission(setting, functionName, logGroupArn);
       })
