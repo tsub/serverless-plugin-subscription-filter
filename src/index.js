@@ -29,9 +29,9 @@ class ServerlessPluginSubscriptionFilter {
       functionObj.events.forEach((event) => {
         const subscriptionFilter = event.subscriptionFilter;
 
-        if (subscriptionFilter) {
+        if (this.validateSettings(subscriptionFilter)) {
           if (subscriptionFilter.stage != stage) {
-            // Skip compileSubscriptionFilterEvents
+            // Skip compile
             this.serverless.cli.log(`Skipping to compile ${subscriptionFilter.logGroupName} subscription filter object...`);
             return;
           }
@@ -42,6 +42,39 @@ class ServerlessPluginSubscriptionFilter {
     });
 
     return Promise.all(promises);
+  }
+
+  validateSettings(setting) {
+    if (!setting) {
+      // Skip compile
+      return false;
+    }
+
+    if (!setting.stage || typeof setting.stage != 'string') {
+      const errorMessage = [
+        'You can\'t set stage properties of a subscriptionFilter event.',
+        'stage propertiy is required.'
+      ].join(' ');
+      throw new this.serverless.classes.Error(errorMessage);
+    }
+
+    if (!setting.logGroupName || typeof setting.logGroupName != 'string') {
+      const errorMessage = [
+        'You can\'t set logGroupName properties of a subscriptionFilter event.',
+        'logGroupName propertiy is required.'
+      ].join(' ');
+      throw new this.serverless.classes.Error(errorMessage);
+    }
+
+    if (!setting.filterPattern || typeof setting.filterPattern != 'string') {
+      const errorMessage = [
+        'You can\'t set filterPattern properties of a subscriptionFilter event.',
+        'filterPattern propertiy is required.'
+      ].join(' ');
+      throw new this.serverless.classes.Error(errorMessage);
+    }
+
+    return true;
   }
 
   doCompile(setting, functionName) {
