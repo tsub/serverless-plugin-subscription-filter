@@ -120,17 +120,22 @@ class ServerlessPluginSubscriptionFilter {
     });
   }
 
-  getLogGroupArn(logGroupName) {
+  getLogGroupArn(logGroupName, nextToken = null) {
     return new Promise((resolve, reject) => {
       const cloudWatchLogs = new AWS.CloudWatchLogs();
       const params = {
-        logGroupNamePrefix: logGroupName
+        logGroupNamePrefix: logGroupName,
+        nextToken
       };
 
       cloudWatchLogs.describeLogGroups(params).promise()
         .then((data) => {
           const logGroups = data.logGroups;
           const logGroup = _.find(logGroups, { logGroupName: logGroupName });
+
+          if (!logGroup) {
+            return this.getLogGroupArn(logGroupName, data.nextToken);
+          }
 
           resolve(logGroup.arn);
         })
