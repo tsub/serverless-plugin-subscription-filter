@@ -1,6 +1,6 @@
 # serverless-plugin-subscription-filter
 
-[![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com)
+[![serverless](http://public.serverless.com/badges/v3.svg)](http://www.serverless.com) [![npm version](https://badge.fury.io/js/serverless-plugin-subscription-filter.svg)](https://badge.fury.io/js/serverless-plugin-subscription-filter)
 
 Serverless plugin to register AWS CloudWatchLogs subscription filter.
 
@@ -15,7 +15,7 @@ plugins:
 
 ## Usage
 
-This plugin is  external serverless events.
+This plugin is external serverless events.
 You can write settings like serverless events.
 
 ```yaml
@@ -44,7 +44,7 @@ functions:
           stage: prod
           logGroupName: /my-log-group
           filterPattern: "{ $.errorMessage != '' }"
-  goobye:
+  goodbye:
     handler: handler.goodbye
     events:
       - subscriptionFilter:
@@ -57,9 +57,9 @@ functions:
 
 |property|description|
 |:---:|:---:|
-|stage|The deployment stage with serverless. Sorry, only one subscription filter can be set for one LogGroup.|
+|stage|The deployment stage with serverless. Because only one subscription filter can be set for one LogGroup.|
 |logGroupName|The log group to associate with the subscription filter. |
-|filterPattern|The filtering expressions that restrict what gets delivered to the destination AWS resource. Sorry, if you want to use "{ $.xxx == yyy }" syntax, then surround ""(double quote).|
+|filterPattern|The filtering expressions that restrict what gets delivered to the destination AWS resource. Sorry, if you want to use "{ $.xxx = yyy }" syntax, then surround ""(double quote).|
 
 ## Future supports
 
