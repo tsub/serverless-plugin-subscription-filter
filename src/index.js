@@ -99,7 +99,7 @@ class ServerlessPluginSubscriptionFilter {
         );
       })
       .catch((err) => {
-        console.log(err, err.stack);
+        throw new this.serverless.classes.Error(err.message);
       });
   }
 
