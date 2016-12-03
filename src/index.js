@@ -164,8 +164,11 @@ class ServerlessPluginSubscriptionFilter {
       cloudWatchLogs.describeLogGroups(params).promise()
         .then((data) => {
           const logGroups = data.logGroups;
-          const logGroup = _.find(logGroups, { logGroupName: logGroupName });
+          if (logGroups.length === 0) {
+            reject(new Error('LogGroup not found'));
+          }
 
+          const logGroup = _.find(logGroups, { logGroupName: logGroupName });
           if (!logGroup) {
             return this.getLogGroupArn(logGroupName, data.nextToken);
           }
