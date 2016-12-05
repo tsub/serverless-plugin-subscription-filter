@@ -1,6 +1,6 @@
 {
   "name": "serverless-plugin-subscription-filter",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "serverless-plugin-subscription-filter",
   "main": "src/index.js",
   "repository": "ssh://git@github.com/tsub/serverless-plugin-subscription-filter",
