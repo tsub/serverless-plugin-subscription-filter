@@ -26,7 +26,7 @@ functions:
       - subscriptionFilter:
           stage: prod
           logGroupName: /cloud-trail
-          filterPattern: "{ $.errorMessage != '' }"
+          filterPattern: '{ $.errorMessage != "" }'
 ```
 
 Supports also multiple subscription filter.
@@ -39,11 +39,11 @@ functions:
       - subscriptionFilter:
           stage: prod
           logGroupName: /cloud-trail
-          filterPattern: "{ $.errorMessage != '' }"
+          filterPattern: '{ $.errorMessage != "" }'
       - subscriptionFilter:
           stage: prod
           logGroupName: /my-log-group
-          filterPattern: "{ $.errorMessage != '' }"
+          filterPattern: '{ $.errorMessage != "" }'
   goodbye:
     handler: handler.goodbye
     events:
@@ -59,7 +59,7 @@ functions:
 |:---:|:---:|
 |stage|The deployment stage with serverless. Because only one subscription filter can be set for one LogGroup.|
 |logGroupName|The log group to associate with the subscription filter. |
-|filterPattern|The filtering expressions that restrict what gets delivered to the destination AWS resource. Sorry, if you want to use "{ $.xxx = yyy }" syntax, then surround ""(double quote).|
+|filterPattern|The filtering expressions that restrict what gets delivered to the destination AWS resource. Sorry, if you want to use '{ $.xxx = "yyy" }' syntax, then surround the whole in ''(single quote).|
 
 ## Future supports
 

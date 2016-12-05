@@ -107,7 +107,7 @@ class ServerlessPluginSubscriptionFilter {
     return new Promise((resolve, _reject) => {
       const lambdaLogicalId = this.provider.naming.getLambdaLogicalId(functionName);
       const lambdaPermissionLogicalId = this.getLambdaPermissionLogicalId(functionName, setting.logGroupName);
-      const filterPattern = setting.filterPattern;
+      const filterPattern = this.escapeDoubleQuote(setting.filterPattern);
       const logGroupName = setting.logGroupName;
       const subscriptionFilterTemplate = `
         {
@@ -193,6 +193,10 @@ class ServerlessPluginSubscriptionFilter {
     const normalizedLogGroupName = this.provider.naming.normalizeNameToAlphaNumericOnly(logGroupName);
 
     return `${normalizedFunctionName}LambdaPermission${normalizedLogGroupName}`;
+  }
+
+  escapeDoubleQuote(str) {
+    return str.replace(/\"/g, '\\"');
   }
 }
 
