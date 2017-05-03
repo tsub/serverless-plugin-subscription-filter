@@ -23,11 +23,17 @@
   "devDependencies": {
     "babel-cli": "^6.24.1",
     "babel-preset-env": "^1.4.0",
+    "eslint": "^3.15.0",
+    "eslint-config-airbnb": "^14.1.0",
+    "eslint-plugin-import": "^2.2.0",
+    "eslint-plugin-jsx-a11y": "^3.0.2 || ^4.0.0",
+    "eslint-plugin-react": "^6.9.0",
     "release-it": "^2.7.1"
   },
   "scripts": {
     "build": "babel src --out-file index.js",
     "watch": "npm run build -- --watch",
-    "prepublish": "npm run build"
+    "prepublish": "npm run build",
+    "lint": "eslint --cache ."
   }
 }
