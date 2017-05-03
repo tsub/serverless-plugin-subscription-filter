@@ -22,7 +22,8 @@
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
-    "babel-preset-env": "^1.4.0"
+    "babel-preset-env": "^1.4.0",
+    "release-it": "^2.7.1"
   },
   "scripts": {
     "build": "babel src --out-file index.js",
