@@ -1,5 +1,3 @@
-'use strict';
-
 const _ = require('lodash');
 const AWS = require('aws-sdk');
 
@@ -10,7 +8,7 @@ class ServerlessPluginSubscriptionFilter {
 
     this.provider = this.serverless.getProvider('aws');
     AWS.config.update({
-      region: this.serverless.service.provider.region
+      region: this.serverless.service.provider.region,
     });
 
     this.hooks = {
@@ -30,7 +28,7 @@ class ServerlessPluginSubscriptionFilter {
         const subscriptionFilter = event.subscriptionFilter;
 
         if (this.validateSettings(subscriptionFilter)) {
-          if (subscriptionFilter.stage != stage) {
+          if (subscriptionFilter.stage !== stage) {
             // Skip compile
             this.serverless.cli.log(`Skipping to compile ${subscriptionFilter.logGroupName} subscription filter object...`);
             return;
@@ -50,26 +48,26 @@ class ServerlessPluginSubscriptionFilter {
       return false;
     }
 
-    if (!setting.stage || typeof setting.stage != 'string') {
+    if (!setting.stage || typeof setting.stage !== 'string') {
       const errorMessage = [
         'You can\'t set stage properties of a subscriptionFilter event.',
-        'stage propertiy is required.'
+        'stage propertiy is required.',
       ].join(' ');
       throw new this.serverless.classes.Error(errorMessage);
     }
 
-    if (!setting.logGroupName || typeof setting.logGroupName != 'string') {
+    if (!setting.logGroupName || typeof setting.logGroupName !== 'string') {
       const errorMessage = [
         'You can\'t set logGroupName properties of a subscriptionFilter event.',
-        'logGroupName propertiy is required.'
+        'logGroupName propertiy is required.',
       ].join(' ');
       throw new this.serverless.classes.Error(errorMessage);
     }
 
-    if (!setting.filterPattern || typeof setting.filterPattern != 'string') {
+    if (!setting.filterPattern || typeof setting.filterPattern !== 'string') {
       const errorMessage = [
         'You can\'t set filterPattern properties of a subscriptionFilter event.',
-        'filterPattern propertiy is required.'
+        'filterPattern propertiy is required.',
       ].join(' ');
       throw new this.serverless.classes.Error(errorMessage);
     }
@@ -81,13 +79,11 @@ class ServerlessPluginSubscriptionFilter {
     this.serverless.cli.log(`Compiling ${setting.logGroupName} subscription filter object...`);
 
     return this.getLogGroupArn(setting.logGroupName)
-      .then((logGroupArn) => {
-        return this.compilePermission(setting, functionName, logGroupArn);
-      })
+      .then(logGroupArn => this.compilePermission(setting, functionName, logGroupArn))
       .then((newPermissionObject) => {
         _.merge(
           this.serverless.service.provider.compiledCloudFormationTemplate.Resources,
-          newPermissionObject
+          newPermissionObject,
         );
 
         return this.compileSubscriptionFilter(setting, functionName);
@@ -95,7 +91,7 @@ class ServerlessPluginSubscriptionFilter {
       .then((newSubscriptionFilterObject) => {
         _.merge(
           this.serverless.service.provider.compiledCloudFormationTemplate.Resources,
-          newSubscriptionFilterObject
+          newSubscriptionFilterObject,
         );
       })
       .catch((err) => {
@@ -107,7 +103,7 @@ class ServerlessPluginSubscriptionFilter {
     return new Promise((resolve, _reject) => {
       const lambdaLogicalId = this.provider.naming.getLambdaLogicalId(functionName);
       const lambdaPermissionLogicalId = this.getLambdaPermissionLogicalId(functionName, setting.logGroupName);
-      const filterPattern = this.escapeDoubleQuote(setting.filterPattern);
+      const filterPattern = ServerlessPluginSubscriptionFilter.escapeDoubleQuote(setting.filterPattern);
       const logGroupName = setting.logGroupName;
       const subscriptionFilterTemplate = `
         {
@@ -122,7 +118,7 @@ class ServerlessPluginSubscriptionFilter {
       `;
       const subscriptionFilterLogicalId = this.getSubscriptionFilterLogicalId(functionName, setting.logGroupName);
       const newSubscriptionFilterObject = {
-        [subscriptionFilterLogicalId]: JSON.parse(subscriptionFilterTemplate)
+        [subscriptionFilterLogicalId]: JSON.parse(subscriptionFilterTemplate),
       };
 
       resolve(newSubscriptionFilterObject);
@@ -130,7 +126,7 @@ class ServerlessPluginSubscriptionFilter {
   }
 
   compilePermission(setting, functionName, logGroupArn) {
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve, _reject) => {
       const lambdaLogicalId = this.provider.naming.getLambdaLogicalId(functionName);
       const region = this.provider.getRegion();
       const permissionTemplate = `
@@ -146,7 +142,7 @@ class ServerlessPluginSubscriptionFilter {
       `;
       const lambdaPermissionLogicalId = this.getLambdaPermissionLogicalId(functionName, setting.logGroupName);
       const newPermissionObject = {
-        [lambdaPermissionLogicalId]: JSON.parse(permissionTemplate)
+        [lambdaPermissionLogicalId]: JSON.parse(permissionTemplate),
       };
 
       resolve(newPermissionObject);
@@ -158,22 +154,22 @@ class ServerlessPluginSubscriptionFilter {
       const cloudWatchLogs = new AWS.CloudWatchLogs();
       const params = {
         logGroupNamePrefix: logGroupName,
-        nextToken
+        nextToken,
       };
 
       cloudWatchLogs.describeLogGroups(params).promise()
         .then((data) => {
           const logGroups = data.logGroups;
           if (logGroups.length === 0) {
-            reject(new Error('LogGroup not found'));
+            return reject(new Error('LogGroup not found'));
           }
 
-          const logGroup = _.find(logGroups, { logGroupName: logGroupName });
+          const logGroup = _.find(logGroups, { logGroupName });
           if (!logGroup) {
             return this.getLogGroupArn(logGroupName, data.nextToken);
           }
 
-          resolve(logGroup.arn);
+          return resolve(logGroup.arn);
         })
         .catch((err) => {
           reject(err);
@@ -195,8 +191,8 @@ class ServerlessPluginSubscriptionFilter {
     return `${normalizedFunctionName}LambdaPermission${normalizedLogGroupName}`;
   }
 
-  escapeDoubleQuote(str) {
-    return str.replace(/\"/g, '\\"');
+  static escapeDoubleQuote(str) {
+    return str.replace(/"/g, '\\"');
   }
 }
 
