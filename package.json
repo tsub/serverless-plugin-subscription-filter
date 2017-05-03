@@ -2,7 +2,7 @@
   "name": "serverless-plugin-subscription-filter",
   "version": "1.0.2",
   "description": "serverless-plugin-subscription-filter",
-  "main": "src/index.js",
+  "main": "index.js",
   "repository": "ssh://git@github.com/tsub/serverless-plugin-subscription-filter",
   "author": "tsub <tsubasatakayama511@gmail.com>",
   "license": "MIT",
@@ -19,5 +19,14 @@
   "dependencies": {
     "aws-sdk": "^2.7.7",
     "lodash": "^4.17.2"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-preset-env": "^1.4.0"
+  },
+  "scripts": {
+    "build": "babel src --out-file index.js",
+    "watch": "npm run build -- --watch",
+    "prepublish": "npm run build"
   }
 }
