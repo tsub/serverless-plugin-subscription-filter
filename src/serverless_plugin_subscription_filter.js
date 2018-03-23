@@ -78,7 +78,8 @@ class ServerlessPluginSubscriptionFilter {
   doCompile(setting, functionName) {
     this.serverless.cli.log(`Compiling ${setting.logGroupName} subscription filter object...`);
 
-    return this.getLogGroupArn(setting.logGroupName)
+    return this.checkResourceLimitExceeded(setting.logGroupName, functionName)
+      .then(_data => this.getLogGroupArn(setting.logGroupName))
       .then(logGroupArn => this.compilePermission(setting, functionName, logGroupArn))
       .then((newPermissionObject) => {
         _.merge(
@@ -97,6 +98,46 @@ class ServerlessPluginSubscriptionFilter {
       .catch((err) => {
         throw new this.serverless.classes.Error(err.message);
       });
+  }
+
+  checkResourceLimitExceeded(logGroupName, functionName) {
+    return new Promise((resolve, reject) => {
+      const lambdaFunctionName = this.buildLambdaFunctionName(functionName);
+      const promises = [
+        ServerlessPluginSubscriptionFilter.getSubscriptionFilterDestinationArn(logGroupName),
+        this.guessSubscriptionFilterDestinationArn(logGroupName, lambdaFunctionName),
+      ];
+
+      Promise.all(promises)
+        .then((data) => {
+          const subscriptionFilterDestinationArn = data[0];
+          const guessedSubscriptionFilterDestinationArn = data[1];
+
+          if (!subscriptionFilterDestinationArn) {
+            return resolve();
+          }
+
+          if (subscriptionFilterDestinationArn !== guessedSubscriptionFilterDestinationArn) {
+            const errorMessage = `
+  Subscription filters of ${logGroupName} log group
+
+  - Resource limit exceeded..
+
+    You've hit a AWS resource limit:
+    http://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html
+
+    Subscription filters: 1/log group. This limit cannot be changed.
+            `;
+
+            return reject(new this.serverless.classes.Error(errorMessage));
+          }
+
+          return resolve();
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
   }
 
   compileSubscriptionFilter(setting, functionName) {
@@ -189,6 +230,48 @@ class ServerlessPluginSubscriptionFilter {
     const normalizedLogGroupName = this.provider.naming.normalizeNameToAlphaNumericOnly(logGroupName);
 
     return `${normalizedFunctionName}LambdaPermission${normalizedLogGroupName}`;
+  }
+
+  buildLambdaFunctionName(functionName) {
+    const serviceName = this.serverless.service.getServiceName();
+    const stage = this.provider.getStage();
+
+    return `${serviceName}-${stage}-${functionName}`;
+  }
+
+  guessSubscriptionFilterDestinationArn(logGroupName, functionName) {
+    return new Promise((resolve, reject) => {
+      const region = this.provider.getRegion();
+
+      this.provider.getAccountId()
+        .then((accountId) => {
+          resolve(`arn:aws:lambda:${region}:${accountId}:function:${functionName}`);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
+  }
+
+  static getSubscriptionFilterDestinationArn(logGroupName) {
+    return new Promise((resolve, reject) => {
+      const cloudWatchLogs = new AWS.CloudWatchLogs();
+      const params = {
+        logGroupName,
+      };
+
+      cloudWatchLogs.describeSubscriptionFilters(params).promise()
+        .then((data) => {
+          if (data.subscriptionFilters.length === 0) {
+            return resolve();
+          }
+
+          return resolve(data.subscriptionFilters[0].destinationArn);
+        })
+        .catch((err) => {
+          reject(err);
+        });
+    });
   }
 
   static escapeDoubleQuote(str) {
