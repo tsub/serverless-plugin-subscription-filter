@@ -21,6 +21,8 @@ class ServerlessPluginSubscriptionFilter {
     const functions = this.serverless.service.getAllFunctions();
     const promises = [];
 
+    this.preCheckResourceLimitExceeded(functions);
+
     functions.forEach((functionName) => {
       const functionObj = this.serverless.service.getFunction(functionName);
 
@@ -98,6 +100,32 @@ class ServerlessPluginSubscriptionFilter {
       .catch((err) => {
         throw new this.serverless.classes.Error(err.message);
       });
+  }
+
+  preCheckResourceLimitExceeded(functions) {
+    const logGroupNames = _.flatMap(functions, (functionName) => {
+      const functionObj = this.serverless.service.getFunction(functionName);
+
+      return functionObj.events;
+    }).map(event =>
+      event.subscriptionFilter.logGroupName,
+    );
+
+    _.mapKeys(_.countBy(logGroupNames), (value, key) => {
+      if (value > 1) {
+        const errorMessage = `
+  Subscription filters of ${key} log group
+
+  - Resource limit exceeded..
+
+    You've hit a AWS resource limit:
+    http://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/cloudwatch_limits_cwl.html
+
+    Subscription filters: 1/log group. This limit cannot be changed.
+        `;
+        throw new this.serverless.classes.Error(errorMessage);
+      }
+    });
   }
 
   checkResourceLimitExceeded(logGroupName, functionName) {
