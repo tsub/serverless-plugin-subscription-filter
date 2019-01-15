@@ -108,7 +108,12 @@ class ServerlessPluginSubscriptionFilter {
 
       return functionObj.events;
     }).map(event =>
-      event.subscriptionFilter.logGroupName,
+      {
+        //Make sure the subscription filter actually exists
+        if (event.subscriptionFilter){
+          return event.subscriptionFilter.logGroupName;
+        }
+      }
     );
 
     _.mapKeys(_.countBy(logGroupNames), (value, key) => {
