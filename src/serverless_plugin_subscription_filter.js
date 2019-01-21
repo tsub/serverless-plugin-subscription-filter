@@ -107,9 +107,8 @@ class ServerlessPluginSubscriptionFilter {
       const functionObj = this.serverless.service.getFunction(functionName);
 
       return functionObj.events;
-    }).map(event =>
-      event.subscriptionFilter.logGroupName,
-    );
+    }).filter(event => event.subscriptionFilter)
+      .map(event => event.subscriptionFilter.logGroupName);
 
     _.mapKeys(_.countBy(logGroupNames), (value, key) => {
       if (value > 1) {
