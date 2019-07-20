@@ -34,7 +34,7 @@
   "scripts": {
     "build": "babel src --out-file index.js",
     "watch": "npm run build -- --watch",
-    "prepublish": "npm run build",
+    "prepublishOnly": "npm run build",
     "lint": "eslint --cache ."
   }
 }
