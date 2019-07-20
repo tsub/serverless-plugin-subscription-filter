@@ -60,7 +60,3 @@ functions:
 |stage|The deployment stage with serverless. Because only one subscription filter can be set for one LogGroup.|
 |logGroupName|The log group to associate with the subscription filter. |
 |filterPattern|The filtering expressions that restrict what gets delivered to the destination AWS resource. Sorry, if you want to use '{ $.xxx = "yyy" }' syntax, then surround the whole in ''(single quote).|
-
-## Future supports
-
-* Set IAM Role for subscription filter
