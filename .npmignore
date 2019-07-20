@@ -1,2 +1,8 @@
+.env
+.envrc
 .eslintcache
+.eslintignore
+.eslintrc.js
+.release-it.json
+babel.config.js
 src
