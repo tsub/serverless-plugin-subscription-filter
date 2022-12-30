@@ -29,7 +29,7 @@
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jsx-a11y": "^3.0.2 || ^4.0.0",
     "eslint-plugin-react": "^6.9.0",
-    "release-it": "^12.3.3"
+    "release-it": "^15.6.0"
   },
   "scripts": {
     "build": "babel src --out-file index.js",
